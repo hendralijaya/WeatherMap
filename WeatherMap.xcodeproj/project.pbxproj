@@ -112,7 +112,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 23A09BCA2C3D773C001DD96C /* Build configuration list for PBXProject "WeatherMap" */;
+			buildConfigurationList = 23A09BCA2C3D773C001DD96C /* Build configuration list folr PBXProject "WeatherMap" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;

@@ -87,6 +87,9 @@ struct ContentView: View {
                 .padding()
                 .shadow(radius: 10)
         }
+        .onAppear {
+            fetchPrecipitationData()
+        }
         .onSubmit(of: /*@START_MENU_TOKEN@*/.text/*@END_MENU_TOKEN@*/) {
             Task { await searchPlaces() }
         }
@@ -122,6 +125,52 @@ extension ContentView {
         self.results = results?.mapItems ?? []
     }
     
+    struct LocationPrecipitationData {
+        let coordinate: CLLocationCoordinate2D
+        let hourlyData: [Date: Double]
+    }
+    
+    func getHourlyPrecipitation(for locations: [CLLocation]) async throws -> [LocationPrecipitationData] {
+        let weatherService = WeatherService()
+        var locationData: [LocationPrecipitationData] = []
+        
+        for location in locations {
+            let weather = try await weatherService.weather(for: location)
+            let hourlyForecasts = weather.hourlyForecast
+            
+            var hourlyPrecipitation: [Date: Double] = [:]
+            
+            for forecast in hourlyForecasts.prefix(12) { // Limit to 12 hours
+                let date = forecast.date
+                print("date \(date)")
+                let precipitation = forecast.precipitationChance
+                hourlyPrecipitation[date] = precipitation
+            }
+            
+            let data = LocationPrecipitationData(coordinate: location.coordinate, hourlyData: hourlyPrecipitation)
+            locationData.append(data)
+        }
+        
+        return locationData
+    }
+    
+    func fetchPrecipitationData() {
+        let centerLocation = CLLocation(latitude: -6, longitude: 106) // San Francisco, CA
+        let radius: Double = 100000 // 100 km
+        let numberOfPoints: Int = 10 // Number of points to query within the radius
+        
+        let locations = generateLocations(within: radius, center: centerLocation, numberOfPoints: numberOfPoints)
+        
+        Task {
+            do {
+                let precipitationData = try await getHourlyPrecipitation(for: locations)
+                print(precipitationData)
+            } catch {
+                print("Failed to fetch weather data: \(error)")
+            }
+        }
+    }
+    
     func fetchRoute() {
         if let mapSelection {
             let request = MKDirections.Request()
@@ -143,6 +192,30 @@ extension ContentView {
                 }
             }
         }
+    }
+    
+    func generateLocations(within radius: Double, center: CLLocation, numberOfPoints: Int) -> [CLLocation] {
+        var locations: [CLLocation] = []
+        let earthRadius = 6371000.0 // Earth radius in meters
+        
+        for _ in 0..<numberOfPoints {
+            let angle = Double.random(in: 0...(2 * .pi))
+            let distance = Double.random(in: 0...radius)
+            
+            let dx = distance * cos(angle)
+            let dy = distance * sin(angle)
+            
+            let deltaLat = dy / earthRadius
+            let deltaLon = dx / (earthRadius * cos(center.coordinate.latitude * .pi / 180))
+            
+            let newLat = center.coordinate.latitude + (deltaLat * 180 / .pi)
+            let newLon = center.coordinate.longitude + (deltaLon * 180 / .pi)
+            
+            let newLocation = CLLocation(latitude: newLat, longitude: newLon)
+            locations.append(newLocation)
+        }
+        
+        return locations
     }
 }
 
